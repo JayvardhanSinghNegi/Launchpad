@@ -1,0 +1,29 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "{{ port }}:{{ port }}"
+    {% if has_secrets %}
+    env_file:
+      - .env
+    {% endif %}
+    {% if db == "postgres" %}
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://devuser:devpass@db:5432/devdb
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: devdb
+    {% elif db == "mongo" %}
+    depends_on:
+      - db
+    environment:
+      - MONGO_URL=mongodb://db:27017/devdb
+  db:
+    image: mongo:6
+    {% endif %}

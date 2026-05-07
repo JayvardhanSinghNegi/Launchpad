@@ -1,0 +1,26 @@
+# ── builder ────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /build
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+# ── final ──────────────────────────────────────────────────────────────────
+FROM node:20-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+COPY --from=builder /build/node_modules ./node_modules
+COPY . .
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE {{ port }}
+
+CMD ["node", "{{ entry_point }}"]

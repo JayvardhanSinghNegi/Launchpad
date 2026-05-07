@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: devopsify-example-app
+  labels:
+    app: devopsify-example-app
+spec:
+  selector:
+    app: devopsify-example-app
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000

@@ -1,0 +1,83 @@
+# {{ app_name }}
+
+> Auto-generated DevOps setup by **DevOpsify**
+
+## Detected Stack
+
+| Item | Value |
+|---|---|
+| Language | {{ language }} |
+| Entry point | {{ entry_point }} |
+| Port | {{ port }} |
+| Database | {{ db or "none" }} |
+| Deploy target | {{ "AWS EKS" if cloud else "minikube" }} |
+| CPU | {{ cpu }} |
+| Memory | {{ memory }} |
+
+## Generated Structuredevopsified-output/{{ app_name }}/
+├── Dockerfile
+├── docker-compose.yml
+├── README.md
+├── k8s/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   ├── hpa.yaml
+│   ├── configmap.yaml
+│   └── monitoring/
+│       ├── prometheus.yaml
+│       └── grafana.yaml
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── vpc.tf
+│   ├── eks.tf
+│   └── ecr.tf
+└── .github/
+└── workflows/
+└── deploy.yml
+
+## Run Locally
+
+```bashdocker compose up --build
+
+App will be available at `http://localhost:{{ port }}`
+
+## Deploy
+
+### minikube
+```bashdevopsify deploy --repo <your-repo-url>
+
+### AWS EKS
+```bashdevopsify deploy --repo <your-repo-url> --cloud
+
+## Secrets
+{% if has_secrets %}
+Secrets are injected via kubectl and never written to disk:
+```bashkubectl create secret generic {{ app_name }}-secrets 
+{% for key in secrets %}
+--from-literal={{ key }}=<value> 
+{% endfor %}
+{% else %}
+No secrets detected in this app.
+{% endif %}
+
+## Monitoring
+
+After deploy, monitoring is available at:
+
+| Service | Command | URL |
+|---|---|---|
+| Prometheus | `kubectl port-forward svc/prometheus 9090:9090` | http://localhost:9090 |
+| Grafana | `kubectl port-forward svc/grafana 3000:3000` | http://localhost:3000 |
+
+Grafana default credentials: `admin / admin`
+
+## Manual Destroy
+
+```bashkubectl delete -f k8s/
+{% if cloud %}
+cd terraform && terraform destroy
+{% else %}
+minikube stop
+{% endif %}

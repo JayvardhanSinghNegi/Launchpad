@@ -1,0 +1,339 @@
+# DevOpsify
+
+> One command. Full production DevOps setup around any GitHub repo.
+
+Built by **Jayvardhan Singh Negi**
+
+---
+
+## What It Does
+
+DevOpsify takes any Python or Node.js GitHub repo and automatically:
+
+1. Clones the repo
+2. Detects language, port, entry point, secrets, and DB dependencies
+3. Generates a complete DevOps setup around it:
+   - Multi-stage Dockerfile
+   - Kubernetes manifests (Deployment, Service, Ingress, HPA, ConfigMap)
+   - Prometheus + Grafana monitoring
+   - Terraform infrastructure (EKS, ECR, VPC, IAM)
+   - GitHub Actions CI/CD pipeline
+4. Deploys it — to minikube locally or AWS EKS via `--cloud`
+5. Shows you the live URL
+6. Auto-destroys everything after your confirmation
+
+---
+
+## Requirements
+
+### Required on your machine
+
+| Tool | Version | Install |
+|---|---|---|
+| Python | 3.10+ | pre-installed |
+| Docker | any | [docs.docker.com](https://docs.docker.com/get-docker/) |
+| Git | any | pre-installed |
+| minikube | latest | [minikube.sigs.k8s.io](https://minikube.sigs.k8s.io/docs/start/) |
+| kubectl | latest | [kubernetes.io](https://kubernetes.io/docs/tasks/tools/) |
+
+### For `--cloud` only
+
+| Tool | Install |
+|---|---|
+| Terraform | [developer.hashicorp.com/terraform/install](https://developer.hashicorp.com/terraform/install) |
+| AWS CLI | [aws.amazon.com/cli](https://aws.amazon.com/cli/) |
+
+### Install minikube + kubectl on Mac M1
+
+```bash
+brew install minikube
+brew install kubectl
+```
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/jayvardhan/devopsify
+cd devopsify
+pip install -e .
+```
+
+Verify:
+
+```bash
+devopsify --help
+```
+
+---
+
+## Usage
+
+### Basic (minikube)
+
+```bash
+devopsify deploy --repo https://github.com/<user>/<repo>
+```
+
+### Cloud (AWS EKS)
+
+```bash
+devopsify deploy --repo https://github.com/<user>/<repo> --cloud
+```
+
+### Private repo
+
+```bash
+devopsify deploy --repo https://github.com/<user>/<private-repo>
+# DevOpsify will ask if it's private and prompt for your GitHub token
+```
+
+### Skip the repo prompt
+
+```bash
+devopsify deploy --repo https://github.com/<user>/<repo>
+```
+
+---
+
+## Interactive Flow
+
+When you run `devopsify deploy`, it walks you through:
+
+```
+1. GitHub repo URL
+2. Is it private? (token prompt if yes)
+3. Clone + auto-detect
+4. Show detection summary → confirm
+5. App name
+6. CPU + Memory (with helper guide)
+7. Secret values from .env.example (hidden input)
+8. DB notice if detected
+9. Confirm deploy target
+10. Generate all files → devopsified-output/<app-name>/
+11. Deploy
+12. Show live URL + Grafana link
+13. Press Enter to auto-destroy
+14. Everything cleaned up
+```
+
+---
+
+## Resource Guide
+
+When prompted for CPU and memory:
+
+```
+Small app  (portfolio, todo, landing page) → 250m  CPU, 256Mi RAM
+Medium app (REST API, dashboard, scraper)  → 500m  CPU, 512Mi RAM
+Heavy app  (ML model, video, data pipeline)→ 1000m CPU, 1Gi   RAM
+```
+
+---
+
+## Generated Output
+
+```
+devopsified-output/
+└── <app-name>/
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── README.md
+    ├── k8s/
+    │   ├── deployment.yaml
+    │   ├── service.yaml
+    │   ├── ingress.yaml
+    │   ├── hpa.yaml
+    │   ├── configmap.yaml
+    │   └── monitoring/
+    │       ├── prometheus.yaml
+    │       └── grafana.yaml
+    ├── terraform/
+    │   ├── main.tf
+    │   ├── variables.tf
+    │   ├── vpc.tf
+    │   ├── eks.tf
+    │   └── ecr.tf
+    └── .github/
+        └── workflows/
+            └── deploy.yml
+```
+
+---
+
+## Example Repo (for testing)
+
+A minimal Flask app is included at `devopsify-example-app/` to test DevOpsify end to end.
+
+### Run the example
+
+```bash
+# push devopsify-example-app to your GitHub first, then:
+devopsify deploy --repo https://github.com/<your-username>/devopsify-example-app
+```
+
+DevOpsify will detect:
+
+| Signal | Detected Value |
+|---|---|
+| Language | Python |
+| Entry point | app.py |
+| Port | 5000 |
+| Secrets | PORT, APP_ENV, SECRET_KEY |
+| DB | none |
+
+### Expected output
+
+```
+devopsified-output/
+└── devopsify-example-app/
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── README.md
+    ├── k8s/
+    │   └── ...
+    ├── terraform/
+    │   └── ...
+    └── .github/
+        └── workflows/
+            └── deploy.yml
+```
+
+After deploy, app is available at the minikube service URL printed in the terminal.
+
+---
+
+## Monitoring
+
+After deploy, DevOpsify automatically deploys Prometheus + Grafana into the cluster.
+
+| Service | URL | Credentials |
+|---|---|---|
+| Grafana | http://localhost:3000 | admin / admin |
+| Prometheus | http://localhost:9090 | — |
+
+Port-forward is started automatically. Both are destroyed on cleanup.
+
+---
+
+## Secrets
+
+- Detected from `.env.example` in your repo
+- Values collected via hidden input (never printed)
+- Injected directly into the cluster via `kubectl create secret`
+- Never written to any file, ever
+
+---
+
+## Supported Languages
+
+| Language | Detection Signal |
+|---|---|
+| Python | `requirements.txt` exists |
+| Node.js | `package.json` exists |
+
+---
+
+## What Is Not Supported (v1)
+
+- Languages beyond Python and Node.js
+- Monorepos or microservices
+- KMS / Vault / external secret managers
+- Multi-region deploys
+
+---
+
+## Architecture
+
+```
+GitHub Repo
+    │
+    ▼
+┌─────────┐     ┌────────────┐     ┌───────────────┐
+│  Clone  │────▶│  Detect    │────▶│ Generate Files│
+└─────────┘     └────────────┘     └───────┬───────┘
+                                           │
+            ┌──────────────────────────────┤
+            │                              │
+            ▼                              ▼
+     ┌─────────────┐              ┌──────────────────┐
+     │   minikube  │              │   AWS EKS (cloud)│
+     │─────────────│              │──────────────────│
+     │ docker build│              │ terraform apply  │
+     │ kubectl apply│             │ ECR push         │
+     │ port-forward│              │ kubectl apply    │
+     └──────┬──────┘              └────────┬─────────┘
+            │                              │
+            └──────────────┬───────────────┘
+                           │
+                           ▼
+                ┌────────────────────┐
+                │ Prometheus+Grafana │
+                │ HPA autoscaling    │
+                │ Secrets injected   │
+                └────────┬───────────┘
+                         │
+                         ▼
+                ┌────────────────────┐
+                │   Demo running ✔   │
+                │   Auto-destroy     │
+                └────────────────────┘
+```
+
+---
+
+## Project Structure
+
+```
+devopsify/
+├── setup.py
+├── requirements.txt
+├── README.md
+├── devopsify-example-app/        ← test repo
+│   ├── app.py
+│   ├── requirements.txt
+│   └── .env.example
+└── devopsify/
+    ├── main.py
+    ├── commands/
+    │   └── run.py
+    ├── utils/
+    │   ├── display.py
+    │   ├── git.py
+    │   ├── detector.py
+    │   ├── generator.py
+    │   ├── secrets.py
+    │   ├── resources.py
+    │   ├── minikube.py
+    │   ├── cloud.py
+    │   ├── monitoring.py
+    │   ├── spinner.py
+    │   └── summary.py
+    └── templates/
+        ├── README.md.j2
+        ├── docker-compose.yml.j2
+        ├── python/Dockerfile.j2
+        ├── node/Dockerfile.j2
+        ├── k8s/
+        │   ├── deployment.yaml.j2
+        │   ├── service.yaml.j2
+        │   ├── ingress.yaml.j2
+        │   ├── hpa.yaml.j2
+        │   ├── configmap.yaml.j2
+        │   └── monitoring/
+        │       ├── prometheus.yaml.j2
+        │       └── grafana.yaml.j2
+        ├── terraform/
+        │   ├── main.tf.j2
+        │   ├── variables.tf.j2
+        │   ├── vpc.tf.j2
+        │   ├── eks.tf.j2
+        │   └── ecr.tf.j2
+        └── github/
+            └── deploy.yml.j2
+```
+
+---
+
+*Built by Jayvardhan Singh Negi*

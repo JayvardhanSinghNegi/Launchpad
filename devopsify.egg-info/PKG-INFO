@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: devopsify
+Version: 0.1.0
+Requires-Dist: click>=8.1.7
+Requires-Dist: jinja2>=3.1.3
+Requires-Dist: gitpython>=3.1.41
+Dynamic: requires-dist

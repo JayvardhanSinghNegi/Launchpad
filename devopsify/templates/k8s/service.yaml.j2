@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ app_name }}
+  labels:
+    app: {{ app_name }}
+spec:
+  selector:
+    app: {{ app_name }}
+  type: {{ "LoadBalancer" if cloud else "NodePort" }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: {{ port }}
+{% if db == "postgres" %}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ app_name }}-db
+spec:
+  selector:
+    app: {{ app_name }}-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+{% elif db == "mongo" %}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ app_name }}-db
+spec:
+  selector:
+    app: {{ app_name }}-db
+  ports:
+    - port: 27017
+      targetPort: 27017
+{% endif %}

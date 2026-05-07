@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devopsify-example-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:
+    - hosts:
+        - devopsify-example-app.local
+      secretName: devopsify-example-app-tls
+  rules:
+    - host: devopsify-example-app.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: devopsify-example-app
+                port:
+                  number: 80

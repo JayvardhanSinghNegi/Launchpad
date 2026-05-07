@@ -1,0 +1,2 @@
+[console_scripts]
+devopsify = devopsify.main:cli

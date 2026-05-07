@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ app_name }}
+  labels:
+    app: {{ app_name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ app_name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ app_name }}
+    spec:
+      containers:
+        - name: {{ app_name }}
+          image: {{ image }}
+          imagePullPolicy: {{ image_pull_policy }}
+          ports:
+            - containerPort: {{ port }}
+          resources:
+            requests:
+              cpu: {{ cpu }}
+              memory: {{ memory }}
+            limits:
+              cpu: {{ cpu }}
+              memory: {{ memory }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ port }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {% if has_secrets %}
+          envFrom:
+            - secretRef:
+                name: {{ app_name }}-secrets
+          {% endif %}
+          {% if db == "postgres" %}
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://devuser:devpass@{{ app_name }}-db:5432/devdb"
+          {% elif db == "mongo" %}
+          env:
+            - name: MONGO_URL
+              value: "mongodb://{{ app_name }}-db:27017/devdb"
+          {% endif %}
+{% if db == "postgres" %}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ app_name }}-db
+  labels:
+    app: {{ app_name }}-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ app_name }}-db
+  template:
+    metadata:
+      labels:
+        app: {{ app_name }}-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_USER
+              value: devuser
+            - name: POSTGRES_PASSWORD
+              value: devpass
+            - name: POSTGRES_DB
+              value: devdb
+          ports:
+            - containerPort: 5432
+{% elif db == "mongo" %}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ app_name }}-db
+  labels:
+    app: {{ app_name }}-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ app_name }}-db
+  template:
+    metadata:
+      labels:
+        app: {{ app_name }}-db
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:6
+          ports:
+            - containerPort: 27017
+{% endif %}
