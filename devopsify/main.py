@@ -12,7 +12,7 @@ def cli():
 @click.option("--cloud", is_flag=True, default=False, help="Deploy to AWS EKS instead of minikube.")
 @click.option("--repo", default=None, help="GitHub repo URL (skip interactive prompt).")
 def deploy(cloud, repo):
-    """Clone a GitHub repo and generate + deploy a full DevOps setup around it."""
+    """Launchpad — auto DevOps around any GitHub repo."""
     print_banner()
     run(cloud=cloud, repo_url=repo)
 

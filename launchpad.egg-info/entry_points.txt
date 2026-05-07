@@ -1,0 +1,2 @@
+[console_scripts]
+launchpad = devopsify.main:cli
